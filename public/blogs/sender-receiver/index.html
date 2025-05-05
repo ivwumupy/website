@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tianjiao's Homepage</title>
+</head>
+<body>
+  <section class="section">
+    <div class="container">
+      
+<h1 class="title">Senders&#x2F;Receivers</h1>
+<p class="subtitle"><strong>2025-05-05</strong></p>
+<p>C++26 introduces senders/receivers as a generic framework for organizing (asynchronous) execution.
+Let's look into them.</p>
+<ul>
+<li><code>sender</code>: A description of work that produces values which are sent to receivers.</li>
+<li><code>receiver</code>: A consumer of values sent by senders.</li>
+</ul>
+<p>In order to produce actual work, a sender must be connected to a receiver, and the result of such a <code>connect</code> operation is the task to be executed, which we refer to as <code>operation_state</code>.</p>
+<pre data-lang="cpp" style="background-color:#2b303b;color:#c0c5ce;" class="language-cpp "><code class="language-cpp" data-lang="cpp"><span style="color:#b48ead;">struct </span><span>my_sender {
+</span><span>  </span><span style="color:#b48ead;">template </span><span>&lt;</span><span style="color:#b48ead;">typename</span><span> Receiver&gt;
+</span><span>  </span><span style="color:#b48ead;">auto </span><span style="color:#8fa1b3;">connect</span><span>(Receiver&amp;&amp; </span><span style="color:#bf616a;">recv</span><span>) -&gt; my_operation_state { </span><span style="color:#65737e;">/* ... */ </span><span>}
+</span><span>};
+</span></code></pre>
+<p>Receivers receive values via <code>set_value</code>:</p>
+<pre data-lang="cpp" style="background-color:#2b303b;color:#c0c5ce;" class="language-cpp "><code class="language-cpp" data-lang="cpp"><span style="color:#b48ead;">struct </span><span>my_receiver {
+</span><span>  </span><span style="color:#b48ead;">auto </span><span style="color:#8fa1b3;">set_value</span><span>(</span><span style="color:#b48ead;">auto</span><span>&amp;&amp; </span><span style="color:#bf616a;">values</span><span>) -&gt; </span><span style="color:#b48ead;">void </span><span>{}
+</span><span>};
+</span></code></pre>
+<p>Operation states represent the actual work that need to be executed.
+So they need to have a <code>start</code> method.</p>
+<pre data-lang="cpp" style="background-color:#2b303b;color:#c0c5ce;" class="language-cpp "><code class="language-cpp" data-lang="cpp"><span style="color:#b48ead;">struct </span><span>my_operation_state {
+</span><span>  </span><span style="color:#b48ead;">auto </span><span style="color:#8fa1b3;">start</span><span>() -&gt; </span><span style="color:#b48ead;">void </span><span>{}
+</span><span>};
+</span></code></pre>
+<p>Now we can put together these three pieces and start the execution:</p>
+<pre data-lang="cpp" style="background-color:#2b303b;color:#c0c5ce;" class="language-cpp "><code class="language-cpp" data-lang="cpp"><span>my_sender{}.</span><span style="color:#bf616a;">connect</span><span>(</span><span style="color:#bf616a;">my_receiver</span><span>{}).</span><span style="color:#bf616a;">start</span><span>()
+</span></code></pre>
+<h2 id="the-just-sender">The <code>just</code> sender</h2>
+<p>Our first sender is the <code>just</code> sender.
+It simply sends a given value to receivers.</p>
+<p>Let's first write the operation state of <code>just</code>.
+When a <code>just</code> sender operates, it should give a value to a receiver.</p>
+<pre data-lang="cpp" style="background-color:#2b303b;color:#c0c5ce;" class="language-cpp "><code class="language-cpp" data-lang="cpp"><span style="color:#b48ead;">template </span><span>&lt;</span><span style="color:#b48ead;">typename</span><span> R, </span><span style="color:#b48ead;">typename</span><span> V&gt;
+</span><span style="color:#b48ead;">struct </span><span>just_operation {
+</span><span>  R r;
+</span><span>  V v;
+</span><span>  </span><span style="color:#b48ead;">auto </span><span style="color:#8fa1b3;">start</span><span>() -&gt; </span><span style="color:#b48ead;">void </span><span>{
+</span><span>    std::</span><span style="color:#bf616a;">move</span><span>(r).</span><span style="color:#bf616a;">set_value</span><span>(std::</span><span style="color:#bf616a;">move</span><span>(v));
+</span><span>  }
+</span><span>};
+</span></code></pre>
+<p>It's then trivial to write down the <code>just</code> sender.</p>
+<pre data-lang="cpp" style="background-color:#2b303b;color:#c0c5ce;" class="language-cpp "><code class="language-cpp" data-lang="cpp"><span style="color:#b48ead;">template </span><span>&lt;</span><span style="color:#b48ead;">typename</span><span> T&gt;
+</span><span style="color:#b48ead;">struct </span><span>just_sender {
+</span><span>  T t;
+</span><span>  </span><span style="color:#b48ead;">template </span><span>&lt;</span><span style="color:#b48ead;">typename</span><span> R&gt;
+</span><span>  </span><span style="color:#b48ead;">auto </span><span style="color:#8fa1b3;">connect</span><span>(R&amp;&amp; </span><span style="color:#bf616a;">r</span><span>) -&gt; just_operation&lt;R, T&gt; {
+</span><span>    </span><span style="color:#b48ead;">return </span><span>{std::</span><span style="color:#bf616a;">forward</span><span>&lt;R&gt;(r), std::</span><span style="color:#bf616a;">move</span><span>(t)};
+</span><span>  }
+</span><span>};
+</span><span>
+</span><span style="color:#b48ead;">template </span><span>&lt;</span><span style="color:#b48ead;">typename</span><span> T&gt;
+</span><span style="color:#b48ead;">auto </span><span style="color:#8fa1b3;">just</span><span>(T&amp;&amp; </span><span style="color:#bf616a;">t</span><span>) -&gt; just_sender&lt;T&gt; {
+</span><span>  </span><span style="color:#b48ead;">return </span><span>{std::</span><span style="color:#bf616a;">forward</span><span>&lt;T&gt;(t)};
+</span><span>}
+</span></code></pre>
+<h2 id="then-a-sender-adapter"><code>then</code>: a sender adapter</h2>
+
+
+    </div>
+  </section>
+</body>
+</html>
