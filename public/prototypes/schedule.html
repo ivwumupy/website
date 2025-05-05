@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>排班表</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .exclude-ranges {
+            margin-bottom: 10px;
+        }
+        
+        /*
+        .date-range input {
+            padding: 8px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .date-range button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        */
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .result-container {
+            margin-top: 30px;
+            display: none; /* Initially hidden, show after generation */
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: center;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>排班表生成器</h1>
+    
+    <div class="date-ranges">
+        <span>要生成的日期范围：从</span>
+        <input type="date" class="date-start" placeholder="开始日期">
+        <span>至</span>
+        <input type="date" class="date-end" placeholder="结束日期">
+    </div>
+
+    <div class="exclude-ranges">
+        <span>要排除的日期范围：</span>
+        <button id="add-range">添加</button>
+        <div class="exclude-range">
+            <input type="date" class="date-start" placeholder="开始日期">
+            <input type="date" class="date-end" placeholder="结束日期">
+            <button class="remove-range">删除</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button id="generate-btn">生成排班表</button>
+    </div>
+    
+    <div class="result-container" id="result">
+        <h2>排班表结果</h2>
+        <table id="schedule-table">
+            <!--<thead>
+                <tr>
+                    <th>日期</th>
+                    <th>星期</th>
+                    <th>班次</th>
+                </tr>
+            </thead>
+            -->
+            <tbody id="schedule-body">
+                <!-- Generated schedule will appear here -->
+            </tbody>
+        </table>
+        <button class="copy-btn" id="copy-btn">复制排班表</button>
+        <h2>统计</h2>
+        <table id="stats-table">
+        </table>
+    </div>
+
+    <script>
+        // JavaScript functionality would go here
+        document.getElementById('add-range').addEventListener('click', function() {
+            const newRange = document.querySelector('.exclude-range').cloneNode(true);
+            this.after(newRange);
+            
+            // Add event listener to the remove button
+            newRange.querySelector('.remove-range').addEventListener('click', function() {
+                this.parentElement.remove();
+            });
+        });
+        
+        // Add event listener to the initial remove button
+        document.querySelector('.remove-range').addEventListener('click', function() {
+            if (document.querySelectorAll('.exclude-range').length > 1) {
+                this.parentElement.remove();
+            }
+        });
+
+        let numWorker = 15;
+        let numWindow = 5;
+
+        window.onload = function () {
+            let tableRef = document.getElementById("schedule-table");
+            let thead = tableRef.createTHead();
+            let row = thead.insertRow();
+            row.insertCell().appendChild(document.createTextNode("日期"));
+            row.insertCell().appendChild(document.createTextNode("星期"));
+            for (let i = 0; i < numWindow; i++) {
+                let cell = row.insertCell();
+                cell.appendChild(document.createTextNode(`窗口${i+1}`));
+            }
+
+            tableRef = document.getElementById("stats-table");
+            thead = tableRef.createTHead();
+            row = thead.insertRow();
+            row.insertCell().appendChild(document.createTextNode("员工"));
+            row.insertCell().appendChild(document.createTextNode("总工作日"));
+            row.insertCell().appendChild(document.createTextNode("周六工作天数"));
+            for (let i = 0; i < numWindow; i++) {
+                let cell = row.insertCell();
+                cell.appendChild(document.createTextNode(`窗口${i+1}天数`));
+            }
+        };
+        
+        document.getElementById('generate-btn').addEventListener('click', function() {
+            // Here you would implement the logic to generate the schedule
+
+            let dateRange = collectIncludeRange();
+            let excludeRanges = collectExcludeRanges();
+
+            if (!dateRange) { return; }
+
+            let all_dates = [];
+            for (let d = dateRange.start; d <= dateRange.end; d.setDate(d.getDate() + 1)) {
+                all_dates.push(new Date(d));
+            }
+            let exclude_dates = [];
+            for (let range of excludeRanges) {
+                for (let d = range.start; d <= range.end; d.setDate(d.getDate() + 1)) {
+                    exclude_dates.push(new Date(d));
+                }
+            }
+            console.log(exclude_dates);
+            let work_dates = all_dates.filter(d => {
+                console.log(exclude_dates.indexOf(d));
+                return exclude_dates.findIndex(x => d.getTime() === x.getTime()) === -1;
+            });
+
+            let stats = Array.from({length: numWorker}, e => ({
+                total_days: 0,
+                saturdays: 0,
+                window_days: Array(numWindow).fill(0),
+            }));
+
+            function openWindows(d) {
+                let day = d.getDay();
+                if (day > 0 && day < 6) {
+                    return [0, 1, 2, 3, 4];
+                } else if (day === 6) {
+                    return [0, 1, 2];
+                } else {
+                    return [];
+                }
+            }
+
+            function findBest(date, w, avail) {
+                let candidates = [];
+                for (let i of avail) {
+                    let s = 0;
+                    if (date.getDay() === 6) {
+                        s = stats[i].saturdays;
+                    }
+                    candidates.push([
+                        i, s, stats[i].total_days, stats[i].window_days[w]
+                    ]);
+                }
+                candidates.sort((a, b) => {
+                    if (a[1] !== b[1]) {
+                        return a[1] - b[1];
+                    }
+                    if (a[2] !== b[2]) {
+                        return a[2] - b[2];
+                    }
+                    if (a[3] !== b[3]) {
+                        return a[3] - b[3];
+                    }
+                    return a[0] - b[0];
+                });
+                return candidates[0][0];
+            }
+
+            // Main logic
+
+            let assigned_last_day = new Set();
+            let workers = new Set();
+            for (let i = 0; i < numWorker; i++) {
+                workers.add(i);
+            }
+
+            let schedule = [];
+
+            for (let d of work_dates) {
+                let ws = openWindows(d);
+                if (ws.length === 0) continue;
+                let assigned_today = new Set();
+                for (let w of ws) {
+                    let avail = workers.difference(assigned_today.union(assigned_last_day));
+                    let chosen = findBest(d, w, avail);
+                    if (chosen === null) {
+                        alert("cannot solve the schedule");
+                        return;
+                    }
+                    schedule.push({
+                        date: d,
+                        window: w,
+                        worker: chosen,
+                    });
+                    assigned_today.add(chosen);
+                    stats[chosen].total_days += 1;
+                    stats[chosen].window_days[w] += 1;
+                    if (d.getDay() === 6) {
+                        stats[chosen].saturdays += 1;
+                    }
+                }
+                assigned_last_day = assigned_today;
+            }
+
+            let tableRef = document.getElementById("schedule-table");
+            let statsTable = document.getElementById("stats-table");
+
+            while (tableRef.rows.length > 1) {
+                tableRef.deleteRow(-1);
+            }
+            while (statsTable.rows.length > 1) {
+                statsTable.deleteRow(-1);
+            }
+
+            let dayNames = [
+                "周日",
+                "周一",
+                "周二",
+                "周三",
+                "周四",
+                "周五",
+                "周六",
+            ];
+
+            let workerNames = Array.from({length: numWorker}, (_, i) => `员工${i+1}`);
+
+            for (let d of work_dates) {
+                let newRow = tableRef.insertRow(-1);
+                let dateCell = newRow.insertCell(0);
+                // let dateText = document.createTextNode(`${d.getFullYear()}/${d.getMonth()}/${d.getDate()}`);
+                let dateText = document.createTextNode(d.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' }));
+                dateCell.appendChild(dateText);
+                let dayCell = newRow.insertCell(1);
+                dayCell.appendChild(document.createTextNode(dayNames[d.getDay()]));
+
+                let ds = schedule.filter(x => x.date === d);
+                ds = ds.sort((a, b) => {
+                    return a.window - b.window;
+                });
+                for (let i = 0; i < numWindow; i++) {
+                    let cell = newRow.insertCell(i + 2);
+                    let idx = ds.findIndex(e => e.window === i);
+                    let n;
+                    if (idx === -1) {
+                        n = "休息";
+                    } else {
+                        n = workerNames[ds[idx].worker];
+                    }
+                    cell.appendChild(document.createTextNode(n));
+                }
+            }
+            
+            // stats
+            for (let i = 0; i < numWorker; i++) {
+                let newRow = statsTable.insertRow();
+                newRow.insertCell().appendChild(document.createTextNode(`员工${i+1}`));
+                newRow.insertCell().appendChild(document.createTextNode(stats[i].total_days));
+                newRow.insertCell().appendChild(document.createTextNode(stats[i].saturdays));
+                for (let w = 0; w < numWindow; w++) {
+                    newRow.insertCell().appendChild(document.createTextNode(stats[i].window_days[w]));
+                }
+            }
+
+            // For demonstration, let's just show the result container
+            document.getElementById('result').style.display = 'block';
+        });
+        
+        document.getElementById('copy-btn').addEventListener('click', function() {
+            // Implement copy functionality
+            const table = document.getElementById('schedule-table');
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(table);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            document.execCommand('copy');
+            selection.removeAllRanges();
+            
+            alert('排班表已复制到剪贴板');
+        });
+
+        function collectIncludeRange() {
+            const elem = document.querySelector(".date-ranges");
+            const start = elem.querySelector(".date-start").value;
+            const end = elem.querySelector(".date-end").value;
+            if (!(start && end)) {
+                alert("请填入日期范围");
+                return null;
+            }
+            return {
+                start: new Date(start),
+                end: new Date(end),
+            };
+        }
+
+        function collectExcludeRanges() {
+            const ranges = [];
+            document.querySelectorAll(".exclude-range").forEach(elem => {
+                const start = elem.querySelector(".date-start").value;
+                const end = elem.querySelector(".date-end").value;
+                if (start && end) {
+                    ranges.push({
+                        start: new Date(start),
+                        end: new Date(end),
+                    });
+                }
+            });
+            return ranges;
+        }
+    </script>
+</body>
+</html>
