@@ -1,5 +1,5 @@
 +++
-title = "Senders/Receivers"
+title = "senders/receivers"
 date = 2025-05-05
 +++
 

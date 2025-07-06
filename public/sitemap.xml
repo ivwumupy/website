@@ -4,14 +4,20 @@
         <loc>https://animatedcat.com/</loc>
     </url>
     <url>
-        <loc>https://animatedcat.com/blogs/</loc>
+        <loc>https://animatedcat.com/about/</loc>
     </url>
     <url>
-        <loc>https://animatedcat.com/blogs/sender-receiver/</loc>
+        <loc>https://animatedcat.com/notes/</loc>
+    </url>
+    <url>
+        <loc>https://animatedcat.com/posts/</loc>
+    </url>
+    <url>
+        <loc>https://animatedcat.com/posts/sender-receiver/</loc>
         <lastmod>2025-05-05</lastmod>
     </url>
     <url>
-        <loc>https://animatedcat.com/blogs/test/</loc>
+        <loc>https://animatedcat.com/posts/test/</loc>
         <lastmod>2025-05-05</lastmod>
     </url>
     <url>
