@@ -13,6 +13,10 @@
         <loc>https://animatedcat.com/posts/</loc>
     </url>
     <url>
+        <loc>https://animatedcat.com/posts/policy-gradient-method/</loc>
+        <lastmod>2025-09-15</lastmod>
+    </url>
+    <url>
         <loc>https://animatedcat.com/posts/sender-receiver/</loc>
         <lastmod>2025-05-05</lastmod>
     </url>
@@ -21,6 +25,6 @@
         <lastmod>2025-05-05</lastmod>
     </url>
     <url>
-        <loc>https://animatedcat.com/prototypes/</loc>
+        <loc>https://animatedcat.com/tools/</loc>
     </url>
 </urlset>
